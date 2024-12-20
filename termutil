@@ -1,0 +1,30 @@
+#!/bin/bash
+
+BOX_NW=$'\u250C'
+BOX_NE=$'\u2510'
+BOX_SW=$'\u2514'
+BOX_SE=$'\u2518'
+BOX_HO=$'\u2500'
+BOX_VE=$'\u2502'
+
+get_date()
+{
+    date +"%H:%M:%S %Z %d/%m/%Y %A"
+}
+
+hud()
+{
+    local cur_date=$(get_date)
+    clear
+    echo -n "$BOX_NW$BOX_HO"
+    printf "%s" $(printf "$BOX_HO%.0s" $(seq 1 ${#cur_date}))
+    echo "$BOX_HO$BOX_NE"
+
+    while true
+        do
+        cur_date=$(get_date)
+        printf "\033[2;3H$cur_date"
+        sleep 1
+    done
+}
+
