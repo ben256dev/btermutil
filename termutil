@@ -7,7 +7,7 @@ BOX_SE=$'\u2518'
 BOX_HO=$'\u2500'
 BOX_VE=$'\u2502'
 
-get_date()
+get-date()
 {
     date +"%H:%M:%S %Z %a %d/%m/%Y"
 }
@@ -26,14 +26,24 @@ bar()
     done
 }
 
+february-days()
+{
+    year=$(date +%Y)
+    if (( (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 )); then
+        echo "29"
+    else
+        echo "28"
+    fi
+}
+
 days-in-month()
 {
     local days
     case $1 in
     01|03|05|07|08|10|12) days=31 ;;
-    04|06|09|10)          days=30 ;;
+    04|06|09|11)          days=30 ;;
     02)                   days=28 ;;
-    *)                    days="" ;;
+    *)                    days=$(february-days) ;;
     esac
     echo $days
 }
@@ -45,34 +55,53 @@ first-of-month()
 
 calendar()
 {
-    local header=$(date +"%_B %Y")
-    local cur_month=$(date +%m)
-    local days=$(days-in-month $cur_month)
+    local cur_date
+    local calendar_date_str="%m %_B %Y %-d"
+    if [ "$#" -eq 0 ]; then
+        cur_date="$(date +"$calendar_date_str")"
+    else
+        if [ "$1" = "-d" ]; then
+            echo "$calendar_date_str"
+            return
+        else
+            cur_date="$1"
+        fi
+    fi
+    local cur_month=$(echo "$cur_date" | awk '{print $1}')
+    local header=$(echo "$cur_date" | awk '{print $2, $3}')
+    local today=$(echo "$cur_date" | awk '{print $4}')
     local fotm=$(first-of-month $cur_month)
-    local today=$(date +%-d)
+    local days=$(($(days-in-month $cur_month)+$fotm))
+
     printf "    %9s\n" "$header"
     echo "--------------------"
     echo " S  M  T  W  T  F  S"
-    for ((i=0; i<$(($fotm%7)); i++)); do
-        echo -n "   "
-    done
-    printf " 1"
-    for ((d=2; d<=$days; d++)); do
-        if [ $(((d-1)%7)) -eq 0 ]; then
-            printf "\n"
-	else
-            printf " "
-	fi	
-        if [ "$d" == "$today" ]; then
-	    printf "\033[92m%2d\033[0m" "$d" 
+
+    local start
+    if [ $fotm -eq 7 ]; then
+        start=8
+    else
+        start=1
+    fi
+    for ((d=$start; d<=$days; d++)); do
+        if [ $d -le $fotm ]; then
+            printf "  "
         else
-	    printf "%2d" "$d" 
-	fi
+	    printf "%2d" "$(($d-$fotm))" 
+        fi
+        if [ $d -eq $days ]; then
+            break
+        fi
+        if [ $(($d%7)) -eq 0 ]; then
+            printf "\n"
+        else
+            printf " "
+        fi
     done
     printf "\n"
 }
 
-cat2d()
+box()
 {
     temp="$1.tmp"
     cat "$@" >"$temp"
@@ -85,15 +114,19 @@ cat2d()
     rm "$temp"
 }
 
+draw-hud()
+{
+    clear
+    get-date | box
+    calendar | box
+}
+
 hud()
 {
     stty -echo
     printf "\033[?25l"
-    clear
 
-    get_date | cat2d
-
-    calendar | cat2d
+    draw-hud
 
     local last_d=$(date +%d)
     while true
@@ -106,9 +139,9 @@ hud()
             break
         fi
 
-        printf "\033[2;3H$(get_date)"
+        printf "\033[2;3H$(get-date)"
         if [ "$(date +%d)" -ne "$last_d" ]; then
-            calendar | cat2d
+            draw-hud
 	fi
         last_d=$(date +%d)
         sleep 0.1
