@@ -78,6 +78,7 @@ calendar()
     echo " S  M  T  W  T  F  S"
 
     local start
+    local day_calc
     if [ $fotm -eq 7 ]; then
         start=8
     else
@@ -87,7 +88,12 @@ calendar()
         if [ $d -le $fotm ]; then
             printf "  "
         else
-	    printf "%2d" "$(($d-$fotm))" 
+            day_calc="$(($d-$fotm))" 
+            if [ $day_calc -eq $today ]; then
+	        printf "\033[1m%2d\033[0m" "$day_calc" 
+            else
+	        printf "%2d" "$day_calc" 
+            fi
         fi
         if [ $d -eq $days ]; then
             break
@@ -101,11 +107,26 @@ calendar()
     printf "\n"
 }
 
+longest-line()
+{
+    awk '{
+        gsub(/^[ \t]+|[ \t]+$/, "", $0)
+        gsub(/\033\[[0-9;]*m/, "", $0)
+        if (length($0) > max_length)
+        {
+            max_length = length($0)
+            longest_line = $0
+        }
+    } END {
+        print longest_line
+    }'
+}
+
 box()
 {
     temp="$1.tmp"
     cat "$@" >"$temp"
-    longest_line=$(awk 'length > max { max = length; longest = $0 } END { printf longest }' "$temp")
+    longest_line=$(cat "$temp" | longest-line)
     echo "$BOX_NW$BOX_HO$(bar "$longest_line")$BOX_HO$BOX_NE"
     line_box="$BOX_VE $(bar "$longest_line" " ") $BOX_VE"
     line_undo="$(bar "  $longest_line" $'\b')"
