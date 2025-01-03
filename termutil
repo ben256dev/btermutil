@@ -53,6 +53,11 @@ first-of-month()
     date -d "$(date +%Y)-$1-01" +%u
 }
 
+regular_day_col="\033[2m"
+important_day_col="\x1b[0m"
+today_col="\x1b[7;22m"
+reset_col="\x1b[0m"
+
 agenda()
 {
     local cat_cmd="sort -n"
@@ -74,10 +79,8 @@ agenda()
         touch ~/.calendar
     fi
     local today="$(date +"%d/%m/%Y" | sed 's/[\/&]/\\&/g'):"
-    local green="\x1b[32m"
     local invert="\x1b[7m"
-    local reset="\x1b[0m"
-    $cat_cmd ~/.calendar | sed "s/${today}/$green&$reset/" | sed -E "s/^([^:]*)./$invert&$reset/"
+    $cat_cmd ~/.calendar | sed -E "s/^([^:]*)./$important_day_col&$reset_col/" | sed "s/${today}/$today_col&$reset_col/"
 }
 
 calendar()
@@ -136,15 +139,14 @@ calendar()
         else
             day_calc="$(($d-$fotm))" 
             date_calc="$(printf "%02d" "$day_calc")/$cur_month/$cur_year"
-            if [ $day_calc -eq $today ] && $use_agenda && grep -q "$date_calc" ~/.calendar; then
-	        printf "\033[32;7m%2d\033[0m" "$day_calc" 
-            elif [ $day_calc -eq $today ]; then
-	        printf "\033[32m%2d\033[0m" "$day_calc" 
-            elif $use_agenda && grep -q "$date_calc" ~/.calendar; then
-	        printf "\033[7m%2d\033[0m" "$day_calc" 
-            else
-	        printf "%2d" "$day_calc" 
+	    printf "$regular_day_col"
+            if $use_agenda && grep -q "$date_calc" ~/.calendar; then
+	        printf "$important_day_col"
             fi
+            if [ $day_calc -eq $today ]; then
+	        printf "$today_col"
+            fi
+	    printf "%2d$reset_col" "$day_calc"
         fi
         if [ $d -eq $days ]; then
             break
