@@ -78,7 +78,7 @@ agenda()
     if $use_agenda && ! [ -f ~/.calendar ]; then
         touch ~/.calendar
     fi
-    local today="$(date +"%d/%m/%Y" | sed 's/[\/&]/\\&/g'):"
+    local today="$(date +"%Y/%m/%d" | sed 's/[\/&]/\\&/g'):"
     local invert="\x1b[7m"
     $cat_cmd ~/.calendar | sed -E "s/^([^:]*)./$important_day_col&$reset_col/" | sed "s/${today}/$today_col&$reset_col/"
 }
@@ -138,7 +138,7 @@ calendar()
             printf "  "
         else
             day_calc="$(($d-$fotm))" 
-            date_calc="$(printf "%02d" "$day_calc")/$cur_month/$cur_year"
+            date_calc="$cur_year/$cur_month/$(printf "%02d" "$day_calc")"
 	    printf "$regular_day_col"
             if $use_agenda && grep -q "$date_calc" ~/.calendar; then
 	        printf "$important_day_col"
