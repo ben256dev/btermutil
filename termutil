@@ -53,27 +53,73 @@ first-of-month()
     date -d "$(date +%Y)-$1-01" +%u
 }
 
+agenda()
+{
+    local cat_cmd="sort -n"
+    if [ "$#" -ne 0 ]; then
+        if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+            echo "usage: agenda [-e | --edit-config <editor>] [-h | --help] [-n | --no-sort]"
+            return
+        elif [ "$1" = "-n" ] || [ "$1" = "--no-sort" ]; then
+            cat_cmd="cat"
+        elif [ "$1" = "-e" ] || [ "$1" = "--edit-config" ]; then
+            if [ "$#" -ne 1 ]; then
+                $2 ~/.calendar
+            else
+                vi ~/.calendar
+            fi
+        fi
+    fi
+    if $use_agenda && ! [ -f ~/.calendar ]; then
+        touch ~/.calendar
+    fi
+    local today="$(date +"%d/%m/%Y" | sed 's/[\/&]/\\&/g'):"
+    local green="\x1b[32m"
+    local invert="\x1b[7m"
+    local reset="\x1b[0m"
+    $cat_cmd ~/.calendar | sed "s/${today}/$green&$reset/" | sed -E "s/^([^:]*)./$invert&$reset/"
+}
+
 calendar()
 {
+    local use_agenda=false
     local cur_date
     local calendar_date_str="%m %_B %Y %-d"
     if [ "$#" -eq 0 ]; then
         cur_date="$(date +"$calendar_date_str")"
     else
-        if [ "$1" = "-d" ]; then
+        if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+            echo "usage: calendar [-a | --use-agenda] [-d | --date-format] [-h | --help] [date-alternative]"
+            echo "  date-alternative : supplied as from \"date +\$(calendar --date-format)\""
+            echo "          GNU - \"calendar \"\$(date -d \"+2 months\" +\"\$(calendar -d)\")\""
+            echo "    BSD/macOS - \"calendar \"\$(date -v +1m +\"\$(calendar -d)\")\""
+            echo "* only specify one of the following flags"
+	    echo "   --use-agenda : highlight days with agenda items specified in ~/.calendar"
+            echo "  --date-format : prints default format string to be passed to \"date\""
+            echo "         --help : print this message"
+            return
+        elif [ "$1" = "-d" ] || [ "$1" = "--date-format" ]; then
             echo "$calendar_date_str"
             return
+        elif [ "$1" = "-a" ] || [ "$1" = "--use-agenda" ]; then
+            use_agenda=true
+            cur_date="$(date +"$calendar_date_str")"
         else
             cur_date="$1"
         fi
     fi
     local cur_month=$(echo "$cur_date" | awk '{print $1}')
-    local header=$(echo "$cur_date" | awk '{print $2, $3}')
+    local cur_month_name=$(echo "$cur_date" | awk '{print $2}')
+    local cur_year=$(echo "$cur_date" | awk '{print $3}')
     local today=$(echo "$cur_date" | awk '{print $4}')
     local fotm=$(first-of-month $cur_month)
     local days=$(($(days-in-month $cur_month)+$fotm))
 
-    printf "    %9s\n" "$header"
+    if $use_agenda && ! [ -f ~/.calendar ]; then
+        touch ~/.calendar
+    fi
+
+    printf "    %9s\n" "$cur_month_name $cur_year"
     echo "--------------------"
     echo " S  M  T  W  T  F  S"
 
@@ -89,8 +135,13 @@ calendar()
             printf "  "
         else
             day_calc="$(($d-$fotm))" 
-            if [ $day_calc -eq $today ]; then
-	        printf "\033[1m%2d\033[0m" "$day_calc" 
+            date_calc="$(printf "%02d" "$day_calc")/$cur_month/$cur_year"
+            if [ $day_calc -eq $today ] && $use_agenda && grep -q "$date_calc" ~/.calendar; then
+	        printf "\033[32;7m%2d\033[0m" "$day_calc" 
+            elif [ $day_calc -eq $today ]; then
+	        printf "\033[32m%2d\033[0m" "$day_calc" 
+            elif $use_agenda && grep -q "$date_calc" ~/.calendar; then
+	        printf "\033[7m%2d\033[0m" "$day_calc" 
             else
 	        printf "%2d" "$day_calc" 
             fi
@@ -139,7 +190,8 @@ draw-hud()
 {
     clear
     get-date | box
-    calendar | box
+    calendar -a | box
+    agenda | box
 }
 
 hud()
