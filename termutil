@@ -228,3 +228,18 @@ get-agenda()
 {
     wget $BTERMUTIL_CALENDAR_HREF -O ~/.calendar
 }
+
+update-agenda()
+{
+    if ! [ -f ~/.calendar ]; then
+        touch ~/.calendar
+    fi
+
+    orig_checksum=$(sha256sum ~/.calendar | cut -d ' ' -f1)
+    vi ~/.calendar
+    new_checksum=$(sha256sum ~/.calendar | cut -d ' ' -f1)
+
+    if [ "$orig_checksum" != "$new_checksum" ]; then
+        scp ~/.calendar "$BTERMUTIL_CALENDAR_SCP_DESTINATION"
+    fi
+}
