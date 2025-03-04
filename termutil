@@ -53,7 +53,7 @@ first-of-month()
     date -d "$(date +%Y)-$1-01" +%u
 }
 
-regular_day_col="\033[2m"
+regular_day_col="\x1b[2m"
 important_day_col="\x1b[0m"
 today_col="\x1b[7;22m"
 reset_col="\x1b[0m"
@@ -76,7 +76,7 @@ agenda()
         fi
     fi
     if $use_agenda && ! [ -f ~/.calendar ]; then
-        touch ~/.calendar
+        vi ~/.calendar
     fi
     local today="$(date +"%Y/%m/%d" | sed 's/[\/&]/\\&/g'):"
     local invert="\x1b[7m"
@@ -119,7 +119,7 @@ calendar()
     local days=$(($(days-in-month $cur_month)+$fotm))
 
     if $use_agenda && ! [ -f ~/.calendar ]; then
-        touch ~/.calendar
+        vi ~/.calendar
     fi
 
     printf "    %9s\n" "$cur_month_name $cur_year"
@@ -222,4 +222,9 @@ hud()
         sleep 0.1
     done
     printf "\033[?25h"
+}
+
+get-agenda()
+{
+    wget $BTERMUTIL_CALENDAR_HREF -O ~/.calendar
 }
