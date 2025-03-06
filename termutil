@@ -196,34 +196,6 @@ draw-hud()
     agenda | box
 }
 
-hud()
-{
-    stty -echo
-    printf "\033[?25l"
-
-    draw-hud
-
-    local last_d=$(date +%d)
-    while true
-    do
-        read -t 0.1 -n 1 key
-        if [[ $key ]]; then
-            clear
-            stty echo
-            printf "\033[?25h"
-            break
-        fi
-
-        printf "\033[2;3H$(get-date)"
-        if [ "$(date +%d)" -ne "$last_d" ]; then
-            draw-hud
-	fi
-        last_d=$(date +%d)
-        sleep 0.1
-    done
-    printf "\033[?25h"
-}
-
 get-agenda()
 {
     wget $BTERMUTIL_CALENDAR_HREF -O ~/.calendar
@@ -242,4 +214,44 @@ update-agenda()
     if [ "$orig_checksum" != "$new_checksum" ]; then
         scp ~/.calendar "$BTERMUTIL_CALENDAR_SCP_DESTINATION"
     fi
+}
+
+hud()
+{
+    stty -echo
+    printf "\033[?25l"
+
+    draw-hud
+
+    local last_d=$(date +%d)
+    local last_s=$(date +%S)
+    local checksum=$(sha256sum ~/.calendar | cut -d' ' -f1)
+    local new_checksum=$checksum
+    while true
+    do
+        read -t 0.1 -n 1 key
+        if [[ $key ]]; then
+            clear
+            stty echo
+            printf "\033[?25h"
+            break
+        fi
+
+        printf "\033[2;3H$(get-date)"
+        if [ "$(date +%d)" -ne "$last_d" ]; then
+            draw-hud
+        fi
+        if [ "$(date +%S)" -ne "$last_s" ]; then
+            get-agenda >/dev/null 2>/dev/null
+            new_checksum=$(sha256sum ~/.calendar | cut -d' ' -f1)
+            if [ "$new_checksum" != "$checksum" ]; then
+                checksum=$new_checksum
+                draw-hud
+            fi
+        fi
+        last_d=$(date +%d)
+        last_s=$(date +%S)
+        sleep 0.1
+    done
+    printf "\033[?25h"
 }
